@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>Helder — Stemming & Interacties</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#C4654A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Helder">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sand:    #F5F0E8;
+  --cream:   #FAF7F2;
+  --warm:    #F0E8DC;
+  --terra:   #C4654A;
+  --terra-lt:#E8A598;
+  --terra-bg:#F7EAE7;
+  --rose:    #D4857A;
+  --sage:    #7A9E7E;
+  --sage-bg: #EBF2EC;
+  --sky:     #7A9DBF;
+  --sky-bg:  #E8EFF5;
+  --amber:   #D4952A;
+  --amber-bg:#F5EDDA;
+  --charcoal:#3D3530;
+  --brown:   #6B5C55;
+  --taupe:   #9C8E85;
+  --muted:   #C4B8B2;
+  --border:  #E2D8D0;
+  --r:       14px;
+  --r-sm:    8px;
+  --r-lg:    20px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--sand);
+  color: var(--charcoal);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.55;
+  min-height: 100vh;
+  overscroll-behavior: none;
+}
+.app { max-width: 430px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; padding-bottom: 88px; }
+
+/* ── Header ── */
+.header { padding: 22px 20px 14px; background: var(--cream); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+.header-row { display: flex; justify-content: space-between; align-items: center; }
+.logo { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 400; color: var(--terra); letter-spacing: -0.5px; }
+.logo em { font-style: italic; font-weight: 300; }
+.date-str { font-size: 13px; color: var(--taupe); margin-top: 2px; }
+.streak-pill { display: flex; align-items: center; gap: 5px; background: var(--amber-bg); border: 1px solid #E8D4A8; border-radius: 20px; padding: 5px 11px; font-size: 13px; font-weight: 500; color: var(--amber); }
+
+/* ── Tabs ── */
+.tabs { display: flex; background: var(--cream); border-bottom: 1px solid var(--border); overflow-x: auto; gap: 0; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { padding: 12px 14px; font-size: 13px; font-weight: 500; color: var(--taupe); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; flex-shrink: 0; transition: color .15s, border-color .15s; }
+.tab.active { color: var(--terra); border-bottom-color: var(--terra); }
+
+/* ── Pages ── */
+.page { display: none; padding: 20px; }
+.page.active { display: block; }
+
+/* ── Cards ── */
+.card { background: var(--cream); border: 1px solid var(--border); border-radius: var(--r); padding: 18px; margin-bottom: 14px; }
+.card-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--taupe); margin-bottom: 10px; }
+
+/* ── Mood Ring ── */
+.mood-ring-wrap { display: flex; flex-direction: column; align-items: center; padding: 10px 0 4px; }
+.mood-ring { width: 110px; height: 110px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-direction: column; position: relative; box-shadow: 0 4px 24px rgba(196,101,74,.18); transition: background .5s ease; }
+.mood-ring-score { font-family: 'Fraunces', serif; font-size: 38px; font-weight: 300; color: #fff; line-height: 1; }
+.mood-ring-label { font-size: 12px; color: rgba(255,255,255,.8); margin-top: 2px; font-weight: 500; }
+.mood-ring-caption { font-size: 13px; color: var(--taupe); margin-top: 12px; text-align: center; }
+
+/* ── Week Strip ── */
+.week-strip { display: flex; gap: 6px; justify-content: space-between; }
+.day-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.day-dot { width: 36px; height: 36px; min-width: 36px; min-height: 36px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500; aspect-ratio: 1 / 1; }
+.day-dot.today { background: var(--terra); color: #fff; }
+.day-dot.has-data { background: var(--terra-bg); color: var(--terra); border: 1px solid var(--terra-lt); }
+.day-dot.low { background: #F0E4E2; color: #B05A45; border: 1px solid #E8C4BE; }
+.day-dot.empty { background: var(--warm); color: var(--muted); }
+.day-label { font-size: 11px; color: var(--taupe); font-weight: 500; }
+
+/* ── Stats Row ── */
+.stats-row { display: flex; gap: 10px; margin-bottom: 14px; }
+.stat-box { flex: 1; background: var(--cream); border: 1px solid var(--border); border-radius: var(--r); padding: 14px 10px; }
+.stat-num { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 400; color: var(--charcoal); line-height: 1; }
+.stat-lbl { font-size: 12px; color: var(--taupe); margin-top: 4px; }
+
+/* ── Pulse Bar ── */
+.pulse-bar { display: flex; gap: 3px; align-items: flex-end; height: 48px; margin: 10px 0 6px; }
+.pulse-seg { flex: 1; border-radius: 3px; background: var(--warm); min-height: 4px; transition: height .3s; }
+
+/* ── Log item ── */
+.log-item { display: flex; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.log-item:last-child { border-bottom: none; }
+.log-time { font-size: 12px; color: var(--taupe); white-space: nowrap; padding-top: 3px; font-weight: 500; }
+.log-content { flex: 1; }
+.log-type { font-size: 13px; color: var(--taupe); margin-bottom: 3px; }
+.log-note { color: var(--charcoal); font-size: 14px; line-height: 1.45; }
+.log-badge { display: flex; align-items: center; gap: 7px; margin-top: 6px; }
+.mood-dot { width: 9px; height: 9px; border-radius: 50%; }
+.mood-dot.up { background: var(--sage); }
+.mood-dot.down { background: var(--terra); }
+.mood-dot.neutral { background: var(--muted); }
+.mood-num { font-size: 12px; color: var(--taupe); font-weight: 500; }
+
+/* ── Section heading ── */
+.sec-head { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--taupe); margin-bottom: 12px; margin-top: 4px; }
+
+/* ── Date group heading ── */
+.date-group { font-size: 13px; font-weight: 600; color: var(--brown); margin: 18px 0 8px; }
+
+/* ── Bar rows ── */
+.bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.bar-label { width: 90px; font-size: 13px; color: var(--charcoal); flex-shrink: 0; line-height: 1.3; }
+.bar-track { flex: 1; height: 8px; background: var(--warm); border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; transition: width .5s ease; }
+.bar-val { font-size: 12px; color: var(--taupe); font-weight: 600; width: 28px; text-align: right; }
+
+/* ── Trigger items ── */
+.trigger-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.trigger-item:last-child { border-bottom: none; }
+.trigger-name { font-size: 14px; color: var(--charcoal); }
+.trigger-sub { font-size: 12px; color: var(--taupe); margin-top: 2px; }
+.trigger-badge { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; flex-shrink: 0; margin-left: 8px; }
+.badge-neg { background: var(--terra-bg); color: var(--terra); }
+.badge-pos { background: var(--sage-bg); color: var(--sage); }
+
+/* ── Suggestion cards ── */
+.sug-card { background: var(--cream); border: 1px solid var(--border); border-radius: var(--r); padding: 18px; margin-bottom: 14px; }
+.sug-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; display: flex; align-items: center; gap: 7px; }
+.sug-title { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 400; color: var(--charcoal); margin-bottom: 8px; }
+.sug-body { font-size: 14px; color: var(--brown); line-height: 1.6; }
+.pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--terra); animation: pdot 2s infinite; flex-shrink: 0; }
+@keyframes pdot { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+
+/* ── AI loading ── */
+.ai-loading { display: flex; align-items: center; gap: 12px; color: var(--taupe); font-size: 14px; padding: 24px 0; }
+.ai-dots span { animation: blink 1.4s infinite; display: inline-block; margin: 0 1px; color: var(--terra); }
+.ai-dots span:nth-child(2){animation-delay:.2s;} .ai-dots span:nth-child(3){animation-delay:.4s;}
+@keyframes blink{0%,80%,100%{opacity:0;}40%{opacity:1;}}
+
+/* ── Trend SVG ── */
+.trend-svg { width: 100%; height: 48px; }
+
+/* ── Reward card ── */
+.reward-banner { background: linear-gradient(135deg, var(--amber-bg), #FDF4E0); border: 1px solid #E8D4A8; border-radius: var(--r); padding: 16px 18px; margin-bottom: 14px; display: flex; align-items: center; gap: 14px; }
+.reward-icon { font-size: 32px; flex-shrink: 0; }
+.reward-title { font-family: 'Fraunces', serif; font-size: 17px; color: var(--charcoal); margin-bottom: 3px; }
+.reward-sub { font-size: 13px; color: var(--taupe); }
+
+/* ── XP bar ── */
+.xp-row { display: flex; align-items: center; gap: 12px; }
+.xp-track { flex: 1; height: 8px; background: var(--warm); border-radius: 4px; overflow: hidden; }
+.xp-fill { height: 100%; background: linear-gradient(90deg, var(--terra), var(--amber)); border-radius: 4px; transition: width .6s ease; }
+.xp-label { font-size: 12px; color: var(--taupe); font-weight: 600; white-space: nowrap; }
+
+/* ── Notifications ── */
+.notif-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.notif-row:last-child { border-bottom: none; }
+.notif-label { font-size: 14px; color: var(--charcoal); }
+.notif-sub { font-size: 12px; color: var(--taupe); }
+.toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; inset: 0; background: var(--muted); border-radius: 12px; cursor: pointer; transition: .3s; }
+.toggle-slider:before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .3s; }
+.toggle input:checked + .toggle-slider { background: var(--terra); }
+.toggle input:checked + .toggle-slider:before { transform: translateX(20px); }
+.time-input { background: var(--warm); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 6px 10px; font-size: 14px; color: var(--charcoal); font-family: 'Plus Jakarta Sans', sans-serif; outline: none; }
+.time-input:focus { border-color: var(--terra); }
+
+/* ── Voice reflect ── */
+.voice-btn { width: 100%; padding: 18px; border-radius: var(--r-lg); border: none; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 600; transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.voice-btn.idle { background: var(--terra); color: #fff; }
+.voice-btn.listening { background: var(--terra-bg); border: 2px solid var(--terra); color: var(--terra); animation: breathe 2s ease-in-out infinite; }
+.voice-btn.processing { background: var(--amber-bg); border: 2px solid var(--amber); color: var(--amber); }
+@keyframes breathe { 0%,100%{transform:scale(1);} 50%{transform:scale(1.02);} }
+.reflect-log { background: var(--cream); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; margin-top: 14px; }
+.reflect-entry { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.reflect-entry:last-child { border-bottom: none; }
+.reflect-date { font-size: 12px; color: var(--taupe); font-weight: 600; margin-bottom: 6px; }
+.reflect-text { font-size: 14px; color: var(--charcoal); line-height: 1.55; }
+.reflect-moods { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.reflect-mood-chip { font-size: 12px; padding: 3px 10px; border-radius: 20px; background: var(--terra-bg); color: var(--terra); font-weight: 500; }
+
+/* ── Thought record ── */
+.thought-step { background: var(--cream); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; margin-bottom: 12px; }
+.step-num { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--terra); margin-bottom: 6px; }
+.step-q { font-family: 'Fraunces', serif; font-size: 16px; font-style: italic; color: var(--charcoal); margin-bottom: 12px; }
+
+/* ── Privacy card ── */
+.privacy-card { background: var(--sage-bg); border: 1px solid #C4D8C6; border-radius: var(--r); padding: 16px 18px; margin-bottom: 14px; }
+.privacy-title { font-size: 14px; font-weight: 600; color: var(--sage); margin-bottom: 6px; display: flex; align-items: center; gap: 7px; }
+.privacy-body { font-size: 13px; color: var(--brown); line-height: 1.55; }
+
+/* ── FAB ── */
+.fab { position: fixed; bottom: 100px; right: 20px; width: 60px; height: 60px; border-radius: 30px; background: var(--terra); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 24px rgba(196,101,74,.35); z-index: 100; transition: transform .15s, box-shadow .15s; }
+.fab:active { transform: scale(.92); box-shadow: 0 2px 10px rgba(196,101,74,.2); }
+.fab svg { width: 26px; height: 26px; fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; }
+
+/* ── Bottom nav ── */
+.nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--cream); border-top: 1px solid var(--border); display: flex; padding: 10px 0 24px; z-index: 10; max-width: 430px; margin: 0 auto; }
+.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 4px 0; color: var(--taupe); font-size: 11px; font-weight: 500; transition: color .15s; }
+.nav-item.active { color: var(--terra); }
+.nav-item svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+
+/* ── Modal ── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(61,53,48,.45); backdrop-filter: blur(6px); z-index: 200; display: none; align-items: flex-end; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--cream); border-radius: 22px 22px 0 0; width: 100%; max-width: 430px; padding: 24px 20px 44px; animation: slideUp .25s ease; max-height: 88vh; overflow-y: auto; border-top: 1px solid var(--border); }
+@keyframes slideUp { from{transform:translateY(60px);opacity:0;} to{transform:translateY(0);opacity:1;} }
+.modal-handle { width: 38px; height: 4px; background: var(--muted); border-radius: 2px; margin: 0 auto 20px; }
+.modal-title { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 400; color: var(--charcoal); margin-bottom: 20px; }
+
+/* ── Form elements ── */
+label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; color: var(--taupe); margin-bottom: 8px; }
+.form-group { margin-bottom: 18px; }
+input[type="text"], textarea {
+  width: 100%; background: var(--sand); border: 1.5px solid var(--border); border-radius: var(--r-sm);
+  padding: 12px 14px; color: var(--charcoal); font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 15px; font-weight: 400; outline: none; transition: border-color .15s; -webkit-appearance: none;
+}
+input:focus, textarea:focus { border-color: var(--terra); background: var(--cream); }
+textarea { resize: none; height: 80px; }
+
+/* ── Chips ── */
+.chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { padding: 8px 15px; border-radius: 22px; border: 1.5px solid var(--border); font-size: 14px; font-weight: 400; color: var(--brown); cursor: pointer; transition: all .15s; background: var(--sand); }
+.chip.selected { border-color: var(--terra); background: var(--terra-bg); color: var(--terra); font-weight: 500; }
+
+/* ── Slider ── */
+.mood-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--taupe); margin-bottom: 8px; }
+input[type="range"] { width: 100%; -webkit-appearance: none; appearance: none; height: 6px; border-radius: 3px; background: var(--warm); outline: none; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: var(--terra); cursor: pointer; box-shadow: 0 2px 8px rgba(196,101,74,.3); }
+.mood-emoji { text-align: center; font-size: 30px; margin-top: 8px; }
+.before-val, .after-val { text-align: center; font-family: 'Fraunces', serif; font-size: 28px; color: var(--charcoal); margin-top: 6px; }
+
+/* ── Buttons ── */
+.btn-primary { width: 100%; padding: 15px; background: var(--terra); border: none; border-radius: var(--r); color: #fff; font-size: 16px; font-weight: 600; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; transition: opacity .15s, transform .1s; margin-top: 6px; }
+.btn-primary:active { opacity: .87; transform: scale(.98); }
+.btn-sec { width: 100%; padding: 13px; background: transparent; border: 1.5px solid var(--border); border-radius: var(--r); color: var(--brown); font-size: 15px; font-weight: 500; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; margin-top: 10px; }
+
+/* ── Toast ── */
+.toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%) translateY(-12px); background: var(--charcoal); border-radius: 22px; padding: 10px 20px; font-size: 14px; color: #fff; font-weight: 500; z-index: 300; opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; white-space: nowrap; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── Confetti badge ── */
+.confetti-overlay { position: fixed; inset: 0; z-index: 400; pointer-events: none; }
+.confetti-piece { position: absolute; width: 10px; height: 10px; border-radius: 2px; animation: fall linear forwards; }
+@keyframes fall { 0%{transform:translateY(-20px) rotate(0deg);opacity:1;} 100%{transform:translateY(100vh) rotate(720deg);opacity:0;} }
+
+/* ── Empty state ── */
+.empty { text-align: center; padding: 44px 20px; color: var(--taupe); font-size: 14px; line-height: 1.6; }
+.empty-icon { font-size: 36px; margin-bottom: 12px; }
+
+/* ── Google Health ── */
+.health-card { background: var(--sky-bg); border: 1px solid #C4D4E0; border-radius: var(--r); padding: 16px 18px; margin-bottom: 14px; }
+.health-title { font-size: 14px; font-weight: 600; color: var(--sky); margin-bottom: 6px; display: flex; align-items: center; gap: 7px; }
+.health-body { font-size: 13px; color: var(--brown); line-height: 1.55; }
+.health-btn { display: inline-block; margin-top: 10px; padding: 8px 16px; background: var(--sky); color: #fff; border-radius: var(--r-sm); font-size: 13px; font-weight: 600; text-decoration: none; border: none; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- Header -->
+<div class="header">
+  <div class="header-row">
+    <div class="logo" style="display:flex;align-items:center;gap:9px;">
+      <svg width="28" height="28" viewBox="0 0 512 512" style="flex-shrink:0;">
+        <defs>
+          <linearGradient id="hdrRing" x1="0.1" y1="0.1" x2="0.9" y2="0.9">
+            <stop offset="0%" stop-color="#C4654A"/><stop offset="45%" stop-color="#D4952A"/><stop offset="100%" stop-color="#7A9E7E"/>
+          </linearGradient>
+        </defs>
+        <circle cx="256" cy="256" r="150" fill="none" stroke="url(#hdrRing)" stroke-width="44" stroke-linecap="round"/>
+        <circle cx="256" cy="256" r="80" fill="url(#hdrRing)"/>
+        <rect x="236" y="80" width="40" height="44" rx="20" fill="#FAF7F2"/>
+      </svg>
+      <em>helder</em>
+    </div>
+    <div class="streak-pill" id="streakPill">🔥 <span id="streakNum">0</span> dagen</div>
+  </div>
+  <div class="date-str" id="headerDate"></div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('vandaag')">Vandaag</div>
+  <div class="tab" onclick="switchTab('log')">Logboek</div>
+  <div class="tab" onclick="switchTab('inzichten')">Inzichten</div>
+  <div class="tab" onclick="switchTab('coach')">Coach</div>
+  <div class="tab" onclick="switchTab('reflectie')">Reflectie</div>
+  <div class="tab" onclick="switchTab('instellingen')">Instellingen</div>
+</div>
+
+<!-- VANDAAG -->
+<div class="page active" id="page-vandaag">
+  <div class="card" style="text-align:center; padding: 24px 18px 18px;">
+    <div class="card-label" style="text-align:left;">Jouw stemming nu</div>
+    <div class="mood-ring-wrap">
+      <div class="mood-ring" id="moodRing">
+        <div class="mood-ring-score" id="ringScore">—</div>
+        <div class="mood-ring-label">/ 10</div>
+      </div>
+      <div class="mood-ring-caption" id="ringCaption">Tap + om je eerste interactie te loggen</div>
+    </div>
+    <div class="pulse-bar" id="pulseBar"></div>
+  </div>
+
+  <div class="card" style="padding: 14px 16px;">
+    <div class="card-label">Deze week</div>
+    <div class="week-strip" id="weekStrip"></div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-num" id="statEntries">0</div>
+      <div class="stat-lbl">vandaag</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" style="color:var(--terra);" id="statDrop">—</div>
+      <div class="stat-lbl">daling</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" style="color:var(--sage);" id="statLift">—</div>
+      <div class="stat-lbl">stijging</div>
+    </div>
+  </div>
+
+  <!-- XP / Rewards -->
+  <div class="card">
+    <div class="card-label">Voortgang</div>
+    <div class="xp-row" style="margin-bottom: 8px;">
+      <div class="xp-track"><div class="xp-fill" id="xpFill" style="width:0%"></div></div>
+      <div class="xp-label" id="xpLabel">0 / 100 XP</div>
+    </div>
+    <div style="font-size: 13px; color: var(--taupe);" id="xpCaption">Log vandaag je eerste interactie voor 10 XP</div>
+  </div>
+
+  <div class="card" id="lastCard" style="display:none;">
+    <div class="card-label">Laatste log</div>
+    <div id="lastContent"></div>
+  </div>
+
+  <div class="card" style="border-color: var(--terra-lt);">
+    <div class="card-label" style="color: var(--terra);">⚡ Vandaag</div>
+    <div id="todayInsight" style="font-size: 15px; color: var(--brown); line-height: 1.6;"></div>
+  </div>
+</div>
+
+<!-- LOGBOEK -->
+<div class="page" id="page-log">
+  <div class="sec-head" id="logCount"></div>
+  <div id="logFeed"></div>
+</div>
+
+<!-- INZICHTEN -->
+<div class="page" id="page-inzichten">
+  <div class="sec-head">30 dagen analyse</div>
+
+  <div class="card">
+    <div class="card-label">Stemming verloop</div>
+    <svg class="trend-svg" id="trendSvg" viewBox="0 0 390 48" preserveAspectRatio="none"></svg>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--taupe);margin-top:6px;">
+      <span id="trendStart"></span><span>Vandaag</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Per interactietype</div>
+    <div id="insightByType"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Invloed per persoon</div>
+    <div id="insightPeople"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Stemming per dagdeel</div>
+    <div id="insightTimeOfDay"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Stemming per dag</div>
+    <div id="insightWeekday"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Grootste dalingen</div>
+    <div id="insightDrops"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Grootste stijgingen</div>
+    <div id="insightLifts"></div>
+  </div>
+</div>
+
+<!-- COACH -->
+<div class="page" id="page-coach">
+  <div class="sec-head">AI Coach — aangedreven door Claude</div>
+  <div style="font-size: 14px; color: var(--taupe); margin-bottom: 18px; line-height: 1.6;">
+    Jouw coach analyseert 30 dagen aan data en geeft persoonlijk advies — gebaseerd op CGT-principes en ADHD-patronen.
+  </div>
+  <div id="aiSuggestions">
+    <div class="ai-loading">
+      <div class="ai-dots"><span>●</span><span>●</span><span>●</span></div>
+      Jouw patronen worden geanalyseerd…
+    </div>
+  </div>
+  <button class="btn-sec" onclick="loadAI()" id="refreshBtn" style="margin-top:4px;">Vernieuw analyse</button>
+</div>
+
+<!-- REFLECTIE (Voice end-of-day) -->
+<div class="page" id="page-reflectie">
+  <div class="sec-head">Dagafsluiting</div>
+  <div style="font-size: 14px; color: var(--taupe); margin-bottom: 18px; line-height: 1.6;">
+    Praat aan het einde van je dag. Helder luistert, vat samen en slaat de kernpunten op.
+  </div>
+
+  <div class="card" style="text-align: center; padding: 28px 20px;">
+    <div style="font-size: 48px; margin-bottom: 12px;" id="voiceIcon">🎙️</div>
+    <div style="font-family: 'Fraunces', serif; font-size: 20px; color: var(--charcoal); margin-bottom: 8px;" id="voiceStatus">Klaar om te luisteren</div>
+    <div style="font-size: 14px; color: var(--taupe); margin-bottom: 24px;" id="voiceSub">Vertel hoe je dag was. Wat ging goed? Wat was zwaar?</div>
+    <button class="voice-btn idle" id="voiceBtn" onclick="toggleVoice()">
+      <span id="voiceBtnIcon">🎙️</span>
+      <span id="voiceBtnText">Begin te praten</span>
+    </button>
+    <div id="voiceTranscript" style="margin-top:16px;font-size:14px;color:var(--brown);line-height:1.6;text-align:left;min-height:60px;padding:12px;background:var(--sand);border-radius:var(--r-sm);display:none;"></div>
+    <button class="btn-primary" id="procesVoiceBtn" style="display:none;margin-top:12px;" onclick="processVoice()">Verwerk & sla op</button>
+  </div>
+
+  <div id="reflectHistory"></div>
+</div>
+
+<!-- INSTELLINGEN -->
+<div class="page" id="page-instellingen">
+  <div class="sec-head">Instellingen</div>
+
+  <!-- Privacy -->
+  <div class="privacy-card">
+    <div class="privacy-title">🔒 Jouw data blijft lokaal</div>
+    <div class="privacy-body">Helder slaat alles op in jouw browser. Er wordt niets naar een server gestuurd — behalve wanneer je de AI Coach gebruikt. Dan worden alleen anonieme statistieken (geen namen, geen notities) naar Claude gestuurd. Je kunt op elk moment alles wissen.</div>
+  </div>
+
+  <!-- Notifications -->
+  <div class="card">
+    <div class="card-label">Herinneringen</div>
+    <div id="notifPermStatus" style="font-size:13px;color:var(--taupe);margin-bottom:12px;"></div>
+
+    <div class="notif-row">
+      <div><div class="notif-label">Ochtendcheck</div><div class="notif-sub">Hoe begin je de dag?</div></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <input type="time" class="time-input" id="notif1Time" value="09:00">
+        <label class="toggle"><input type="checkbox" id="notif1" onchange="saveNotifSettings()"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+    <div class="notif-row">
+      <div><div class="notif-label">Lunchpauze</div><div class="notif-sub">Even inchecken na de ochtend</div></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <input type="time" class="time-input" id="notif2Time" value="12:30">
+        <label class="toggle"><input type="checkbox" id="notif2" onchange="saveNotifSettings()"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+    <div class="notif-row">
+      <div><div class="notif-label">Middagcheck</div><div class="notif-sub">Na een drukke werkochtend</div></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <input type="time" class="time-input" id="notif3Time" value="15:30">
+        <label class="toggle"><input type="checkbox" id="notif3" onchange="saveNotifSettings()"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+    <div class="notif-row">
+      <div><div class="notif-label">Dagafsluiting</div><div class="notif-sub">Reflecteer op je dag</div></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <input type="time" class="time-input" id="notif4Time" value="20:00">
+        <label class="toggle"><input type="checkbox" id="notif4" onchange="saveNotifSettings()"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="requestNotifPermission()" style="margin-top:14px;">Meldingen inschakelen</button>
+  </div>
+
+  <!-- Google Health -->
+  <div class="health-card" id="fitbitCard">
+    <div class="health-title">❤️ Google Health</div>
+    <div id="fitbitStatus" class="health-body">Koppel je Google Health account voor hartslag, slaap en HRV context bij je stemming-logs. Werkt met Fitbit, Pixel Watch en andere apparaten.</div>
+    <div id="fitbitConnected" style="display:none;background:var(--sage-bg);border:1px solid #C4D8C6;border-radius:8px;padding:12px 14px;margin-top:12px;font-size:13px;color:var(--sage);">
+      ✓ Google Health gekoppeld — hartslag en slaap worden geladen bij elk log
+      <div style="margin-top:8px;" id="fitbitDataPreview"></div>
+    </div>
+    <div id="fitbitSetup" style="margin-top:12px;">
+      <div style="font-size:13px;color:var(--brown);margin-bottom:10px;">
+        Werkt alleen via GitHub Pages of een andere HTTPS-URL — niet via <code>file://</code>.<br>
+        Maak een project aan in <strong>Google Cloud Console</strong>, schakel de Google Health API in, en plak je OAuth 2.0 Client ID hieronder:
+      </div>
+      <input type="text" id="fitbitClientId" placeholder="Google Cloud Client ID (bijv. 12345-abc.apps.googleusercontent.com)" style="margin-bottom:10px;">
+      <button class="health-btn" onclick="startGoogleHealthAuth()">Verbind Google Health</button>
+    </div>
+    <button class="health-btn" id="fitbitDisconnectBtn" style="display:none;background:var(--terra);margin-top:10px;" onclick="disconnectFitbit()">Google Health ontkoppelen</button>
+  </div>
+
+  <!-- Install app -->
+  <div class="card" id="installCard">
+    <div class="card-label">App installeren</div>
+    <div style="font-size:14px;color:var(--brown);margin-bottom:14px;">Zet Helder op je beginscherm zodat het opent als een echte app — zonder browserbalk.</div>
+    <button class="btn-primary" onclick="installFromSettings()" id="settingsInstallBtn">Installeer op beginscherm</button>
+    <div id="installHint" style="font-size:13px;color:var(--taupe);margin-top:12px;line-height:1.5;"></div>
+  </div>
+
+  <!-- Data -->
+  <div class="card">
+    <div class="card-label">Data beheer</div>
+    <div style="font-size:14px;color:var(--brown);margin-bottom:14px;">Exporteer of wis al je Helder data.</div>
+    <button class="btn-primary" onclick="exportData()">Exporteer als JSON</button>
+    <button class="btn-sec" onclick="clearData()" style="border-color: var(--terra); color: var(--terra);">Wis alle data</button>
+  </div>
+</div>
+
+</div><!-- .app -->
+
+<button class="fab" onclick="openModal()">
+  <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+</button>
+
+<div class="nav">
+  <div class="nav-item active" id="nav-vandaag" onclick="switchNav('vandaag')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+    Vandaag
+  </div>
+  <div class="nav-item" id="nav-log" onclick="switchNav('log')">
+    <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+    Log
+  </div>
+  <div class="nav-item" id="nav-inzichten" onclick="switchNav('inzichten')">
+    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Inzichten
+  </div>
+  <div class="nav-item" id="nav-coach" onclick="switchNav('coach')">
+    <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 015 5 5 5 0 01-5 5 5 5 0 01-5-5 5 5 0 015-5m0 12c5.33 0 8 2.67 8 4v2H4v-2c0-1.33 2.67-4 8-4z"/></svg>
+    Coach
+  </div>
+  <div class="nav-item" id="nav-reflectie" onclick="switchNav('reflectie')">
+    <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+    Reflectie
+  </div>
+</div>
+
+<!-- LOG MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Interactie loggen</div>
+    <div class="form-group">
+      <label>Wat voor interactie?</label>
+      <div class="chip-grid" id="typeChips">
+        <div class="chip" onclick="selectChip(this)">Gesprek</div>
+        <div class="chip" onclick="selectChip(this)">Vergadering</div>
+        <div class="chip" onclick="selectChip(this)">Bericht</div>
+        <div class="chip" onclick="selectChip(this)">Werk / Taak</div>
+        <div class="chip" onclick="selectChip(this)">Conflict</div>
+        <div class="chip" onclick="selectChip(this)">Alleen zijn</div>
+        <div class="chip" onclick="selectChip(this)">Sociale media</div>
+        <div class="chip" onclick="selectChip(this)">Bewegen</div>
+        <div class="chip" onclick="selectChip(this)">Anders</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Met wie / context</label>
+      <input type="text" id="inputWho" placeholder="bv. collega, partner, vriend…">
+    </div>
+    <div class="form-group">
+      <label>Stemming ervoor — <span id="beforeVal">5</span></label>
+      <div class="mood-labels"><span>Laag</span><span>Hoog</span></div>
+      <input type="range" min="1" max="10" value="5" id="moodBefore" oninput="document.getElementById('beforeVal').textContent=this.value">
+    </div>
+    <div class="form-group">
+      <label>Stemming erna — <span id="afterVal">5</span></label>
+      <div class="mood-labels"><span>Laag</span><span>Hoog</span></div>
+      <input type="range" min="1" max="10" value="5" id="moodAfter" oninput="updateEmoji(this.value)">
+      <div class="mood-emoji" id="afterEmoji">😐</div>
+    </div>
+    <div class="form-group">
+      <label>Notitie (optioneel)</label>
+      <textarea id="inputNote" placeholder="Wat is er gebeurd? Hoe voelde het?"></textarea>
+    </div>
+    <button class="btn-primary" onclick="saveEntry()">Opslaan</button>
+    <button class="btn-sec" onclick="closeModal()">Annuleren</button>
+  </div>
+</div>
+
+<div class="confetti-overlay" id="confettiOverlay"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ─────────────────────────────────────────────────
+const DB='helder_entries_v1', CBTDB='helder_cbt_v1', REFLDB='helder_refl_v1', XPDB='helder_xp_v1', NOTDB='helder_notif_v1';
+let entries=[], cbtRecords=[], reflections=[], xpData={xp:0,level:1,streak:0,lastDate:''}, aiLoaded=false, selectedType='', voiceListening=false, recognition=null, voiceText='';
+
+function load(){
+  try{entries=JSON.parse(localStorage.getItem(DB)||'[]');}catch(e){entries=[];}
+  try{cbtRecords=JSON.parse(localStorage.getItem(CBTDB)||'[]');}catch(e){cbtRecords=[];}
+  try{reflections=JSON.parse(localStorage.getItem(REFLDB)||'[]');}catch(e){reflections=[];}
+  try{xpData=JSON.parse(localStorage.getItem(XPDB)||'null')||{xp:0,level:1,streak:0,lastDate:''};}catch(e){xpData={xp:0,level:1,streak:0,lastDate:''};}
+}
+function save(){localStorage.setItem(DB,JSON.stringify(entries));}
+function saveXP(){localStorage.setItem(XPDB,JSON.stringify(xpData));}
+
+load();
+setHeaderDate(); updateStreak(); renderWeekStrip(); renderToday(); renderLog(); renderCBTHistory(); renderReflections(); renderTodayInsight(); loadNotifSettings();
+
+function setHeaderDate(){
+  const now=new Date();
+  const dagen=['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
+  const mnd=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+  document.getElementById('headerDate').textContent=dagen[now.getDay()]+' '+now.getDate()+' '+mnd[now.getMonth()];
+}
+
+// ── STREAK & XP ───────────────────────────────────────────
+function updateStreak(){
+  const today=new Date().toDateString();
+  const yesterday=new Date(Date.now()-86400000).toDateString();
+  const todayHasEntry=entries.some(e=>new Date(e.ts).toDateString()===today);
+  if(todayHasEntry && xpData.lastDate!==today){
+    if(xpData.lastDate===yesterday) xpData.streak++;
+    else xpData.streak=1;
+    xpData.lastDate=today;
+    saveXP();
+  }
+  document.getElementById('streakNum').textContent=xpData.streak;
+  renderXP();
+}
+
+function addXP(amount, reason){
+  xpData.xp+=amount;
+  const xpPerLevel=100;
+  if(xpData.xp>=xpPerLevel){
+    xpData.xp-=xpPerLevel; xpData.level++;
+    setTimeout(()=>showReward('Level '+xpData.level+'! 🎉','Je bent naar level '+xpData.level+' gegaan!'),400);
+    confetti();
+  }
+  saveXP(); renderXP();
+  showToast('+'+amount+' XP — '+reason);
+}
+
+function renderXP(){
+  const pct=Math.min(100,(xpData.xp/100)*100);
+  document.getElementById('xpFill').style.width=pct+'%';
+  document.getElementById('xpLabel').textContent=xpData.xp+' / 100 XP · Level '+xpData.level;
+  const captions=['Log vandaag je eerste interactie voor 10 XP','Nog '+(100-xpData.xp)+' XP tot level '+(xpData.level+1),'Goed bezig! Blijf loggen voor meer XP'];
+  document.getElementById('xpCaption').textContent=captions[Math.min(2,Math.floor(xpData.xp/34))];
+}
+
+function showReward(title, sub){
+  const el=document.createElement('div');
+  el.className='reward-banner';
+  el.innerHTML=`<div class="reward-icon">⭐</div><div><div class="reward-title">${title}</div><div class="reward-sub">${sub}</div></div>`;
+  document.getElementById('page-vandaag').insertBefore(el, document.getElementById('page-vandaag').firstChild.nextSibling);
+  setTimeout(()=>el.remove(),5000);
+}
+
+function confetti(){
+  const overlay=document.getElementById('confettiOverlay');
+  const colors=['#C4654A','#E8A598','#7A9E7E','#D4952A','#7A9DBF','#F5F0E8'];
+  for(let i=0;i<40;i++){
+    const p=document.createElement('div'); p.className='confetti-piece';
+    p.style.cssText=`left:${Math.random()*100}%;background:${colors[Math.floor(Math.random()*colors.length)]};animation-duration:${1+Math.random()*2}s;animation-delay:${Math.random()*.5}s;`;
+    overlay.appendChild(p); setTimeout(()=>p.remove(),3000);
+  }
+}
+
+// ── NAV ───────────────────────────────────────────────────
+const TABS=['vandaag','log','inzichten','coach','reflectie','instellingen'];
+function switchTab(id){
+  TABS.forEach(t=>{
+    const tab=document.querySelectorAll('.tab')[TABS.indexOf(t)];
+    if(tab) tab.classList.toggle('active',t===id);
+    const nav=document.getElementById('nav-'+t);
+    if(nav) nav.classList.toggle('active',t===id);
+  });
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(id==='inzichten') renderInsights();
+  if(id==='coach'&&!aiLoaded){loadAI();aiLoaded=true;}
+}
+function switchNav(id){switchTab(id);}
+
+// ── MODAL ─────────────────────────────────────────────────
+function openModal(){
+  document.getElementById('modalOverlay').classList.add('open');
+  document.getElementById('moodBefore').value=5; document.getElementById('moodAfter').value=5;
+  document.getElementById('beforeVal').textContent='5'; document.getElementById('afterVal').textContent='5';
+  document.getElementById('afterEmoji').textContent='😐';
+  document.getElementById('inputWho').value=''; document.getElementById('inputNote').value='';
+  document.querySelectorAll('#typeChips .chip').forEach(c=>c.classList.remove('selected'));
+  selectedType='';
+}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('open');}
+function closeModalOutside(e){if(e.target===document.getElementById('modalOverlay'))closeModal();}
+function selectChip(el){
+  document.querySelectorAll('#typeChips .chip').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected'); selectedType=el.textContent;
+}
+function updateEmoji(v){
+  document.getElementById('afterVal').textContent=v;
+  const em=['','😫','😔','😕','😐','😐','🙂','😊','😄','😄','🤩'];
+  document.getElementById('afterEmoji').textContent=em[parseInt(v)]||'😐';
+}
+
+function saveEntry(){
+  const before=parseInt(document.getElementById('moodBefore').value);
+  const after=parseInt(document.getElementById('moodAfter').value);
+  const who=document.getElementById('inputWho').value.trim();
+  const note=document.getElementById('inputNote').value.trim();
+  const type=selectedType||'Anders';
+  entries.unshift({id:Date.now(),ts:new Date().toISOString(),type,who,before,after,delta:after-before,note});
+  save(); closeModal();
+  addXP(10,'Interactie gelogd');
+  updateStreak(); renderToday(); renderLog(); aiLoaded=false; renderTodayInsight();
+}
+
+// ── MOOD RING ─────────────────────────────────────────────
+function moodColor(score){
+  if(!score||score<1) return 'linear-gradient(135deg, #C4B8B2, #9C8E85)';
+  if(score<=3) return 'linear-gradient(135deg, #C4654A, #D4857A)';
+  if(score<=5) return 'linear-gradient(135deg, #D4952A, #E8A598)';
+  if(score<=7) return 'linear-gradient(135deg, #7A9DBF, #7A9E7E)';
+  return 'linear-gradient(135deg, #7A9E7E, #4CAF70)';
+}
+
+// ── TODAY ─────────────────────────────────────────────────
+function todayE(){const t=new Date().toDateString();return entries.filter(e=>new Date(e.ts).toDateString()===t);}
+
+function renderToday(){
+  const td=todayE();
+  const ring=document.getElementById('moodRing');
+  if(!td.length){
+    ring.style.background=moodColor(null);
+    document.getElementById('ringScore').textContent='—';
+    document.getElementById('ringCaption').textContent='Tap + om je eerste interactie te loggen';
+    document.getElementById('pulseCaption') && (document.getElementById('pulseCaption').textContent='');
+  }else{
+    const avg=td.reduce((s,e)=>s+e.after,0)/td.length;
+    ring.style.background=moodColor(avg);
+    document.getElementById('ringScore').textContent=avg.toFixed(1);
+    document.getElementById('ringCaption').textContent=td.length+' interactie'+(td.length>1?'s':'')+' vandaag';
+  }
+
+  // Pulse bar
+  const bar=document.getElementById('pulseBar'); bar.innerHTML='';
+  const hd={};
+  td.forEach(e=>{const h=new Date(e.ts).getHours();if(!hd[h])hd[h]=[];hd[h].push(e.after);});
+  for(let i=0;i<24;i++){
+    const s=document.createElement('div'); s.className='pulse-seg';
+    if(hd[i]){const a=hd[i].reduce((x,y)=>x+y,0)/hd[i].length; s.style.height=(a/10*100)+'%'; s.style.background=a>=6?'var(--sage)':a>=4?'var(--amber)':'var(--terra)';}
+    bar.appendChild(s);
+  }
+
+  const drops=td.filter(e=>e.delta<0).map(e=>Math.abs(e.delta));
+  const lifts=td.filter(e=>e.delta>0).map(e=>e.delta);
+  document.getElementById('statEntries').textContent=td.length;
+  document.getElementById('statDrop').textContent=drops.length?'-'+Math.max(...drops):'—';
+  document.getElementById('statLift').textContent=lifts.length?'+'+Math.max(...lifts):'—';
+
+  if(td.length){
+    const last=td[0];
+    document.getElementById('lastCard').style.display='block';
+    document.getElementById('lastContent').innerHTML=`
+      <div class="log-type">${last.type}${last.who?' · <em>'+last.who+'</em>':''}</div>
+      ${last.note?`<div class="log-note" style="margin-top:4px;">${last.note}</div>`:''}
+      <div class="log-badge" style="margin-top:7px;">
+        <div class="mood-dot ${last.delta>0?'up':last.delta<0?'down':'neutral'}"></div>
+        <div class="mood-num">${last.before} → ${last.after} (${last.delta>0?'+':''}${last.delta})</div>
+      </div>`;
+  }
+  renderWeekStrip();
+}
+
+function renderTodayInsight(){
+  const td=todayE(); const el=document.getElementById('todayInsight');
+  if(!td.length){el.textContent='Log je eerste interactie om een eerste beeld te zien.';return;}
+  const avg=td.reduce((s,e)=>s+e.after,0)/td.length;
+  const worst=td.reduce((w,e)=>e.delta<w.delta?e:w,td[0]);
+  const best=td.reduce((b,e)=>e.delta>b.delta?e:b,td[0]);
+  let t='';
+  if(avg>=7)t='Sterke dag tot nu toe. ';else if(avg>=5)t='Wisselende dag — ups en downs. ';else t='Zware dag. ';
+  if(worst.delta<=-2)t+=`Grootste dip: ${worst.type.toLowerCase()}${worst.who?' met '+worst.who:''}. `;
+  if(best.delta>=2)t+=`Grootste stijging: ${best.type.toLowerCase()}${best.who?' met '+best.who:''}. `;
+  const h=new Date().getHours();
+  if(h<12)t+='Ochtendenergie is vaak lager — dit verbetert vaak na 11 uur.';
+  else if(h>=14&&h<16)t+='Middagdip zone. Een korte wandeling kan het verschil maken.';
+  else if(h>=18)t+='Avond — goed moment voor herstelactiviteiten.';
+  el.textContent=t;
+}
+
+// ── WEEK STRIP ────────────────────────────────────────────
+function renderWeekStrip(){
+  const strip=document.getElementById('weekStrip'); strip.innerHTML='';
+  const labels=['zo','ma','di','wo','do','vr','za'];
+  const now=new Date(); const td=now.getDay();
+  for(let i=0;i<7;i++){
+    const d=new Date(now); d.setDate(now.getDate()-td+i);
+    const de=entries.filter(e=>new Date(e.ts).toDateString()===d.toDateString());
+    const isToday=i===td; let avg=null;
+    if(de.length) avg=de.reduce((s,e)=>s+e.after,0)/de.length;
+    const col=document.createElement('div'); col.className='day-col';
+    const dot=document.createElement('div');
+    dot.className='day-dot '+(isToday?'today':de.length?(avg<4?'low':'has-data'):'empty');
+    dot.textContent=avg!==null?avg.toFixed(0):'';
+    const lbl=document.createElement('div'); lbl.className='day-label'; lbl.textContent=labels[i];
+    col.appendChild(dot); col.appendChild(lbl); strip.appendChild(col);
+  }
+}
+
+// ── LOG FEED ──────────────────────────────────────────────
+function renderLog(){
+  const feed=document.getElementById('logFeed');
+  document.getElementById('logCount').textContent=entries.length+' interacties gelogd';
+  if(!entries.length){feed.innerHTML='<div class="empty"><div class="empty-icon">📋</div>Nog niets gelogd.<br>Tap + om te beginnen.</div>';return;}
+  const groups={};
+  entries.forEach(e=>{const k=new Date(e.ts).toDateString();if(!groups[k])groups[k]=[];groups[k].push(e);});
+  feed.innerHTML='';
+  Object.entries(groups).forEach(([date,de])=>{
+    const h=document.createElement('div'); h.className='date-group';
+    const d=new Date(date); const dagen=['Zondag','Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag'];
+    const mnd=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+    h.textContent=d.toDateString()===new Date().toDateString()?'Vandaag':dagen[d.getDay()]+' '+d.getDate()+' '+mnd[d.getMonth()];
+    feed.appendChild(h);
+    const card=document.createElement('div'); card.className='card'; card.style.padding='4px 16px';
+    de.forEach(e=>{
+      const el=document.createElement('div'); el.className='log-item';
+      const t=new Date(e.ts);
+      const hm=t.getHours().toString().padStart(2,'0')+':'+t.getMinutes().toString().padStart(2,'0');
+      el.innerHTML=`<div class="log-time">${hm}</div><div class="log-content">
+        <div class="log-type">${e.type}${e.who?' · <em>'+e.who+'</em>':''}</div>
+        ${e.note?`<div class="log-note">${e.note}</div>`:''}
+        <div class="log-badge"><div class="mood-dot ${e.delta>0?'up':e.delta<0?'down':'neutral'}"></div>
+        <div class="mood-num">${e.before} → ${e.after} (${e.delta>0?'+':''}${e.delta})</div></div>
+      </div>`;
+      card.appendChild(el);
+    });
+    feed.appendChild(card);
+  });
+}
+
+// ── ANALYTICS ─────────────────────────────────────────────
+function analyse(){
+  const typeMap={},pMap={},slots={Ochtend:[],Middag:[],Avond:[],Nacht:[]},wdMap={0:[],1:[],2:[],3:[],4:[],5:[],6:[]};
+  entries.forEach(e=>{
+    if(!typeMap[e.type])typeMap[e.type]={s:0,d:0,n:0};
+    typeMap[e.type].s+=e.after;typeMap[e.type].d+=e.delta;typeMap[e.type].n++;
+    if(e.who){if(!pMap[e.who])pMap[e.who]={d:0,s:0,n:0};pMap[e.who].d+=e.delta;pMap[e.who].s+=e.after;pMap[e.who].n++;}
+    const h=new Date(e.ts).getHours();
+    if(h>=5&&h<12)slots.Ochtend.push(e.after);else if(h>=12&&h<17)slots.Middag.push(e.after);
+    else if(h>=17&&h<22)slots.Avond.push(e.after);else slots.Nacht.push(e.after);
+    wdMap[new Date(e.ts).getDay()].push(e.after);
+  });
+  const typeStats=Object.entries(typeMap).map(([t,d])=>({type:t,avg:d.s/d.n,avgDelta:d.d/d.n,count:d.n})).sort((a,b)=>b.avg-a.avg);
+  const personStats=Object.entries(pMap).filter(([,d])=>d.n>=2).map(([p,d])=>({person:p,avgDelta:d.d/d.n,avgAfter:d.s/d.n,count:d.n})).sort((a,b)=>a.avgDelta-b.avgDelta);
+  const slotStats=Object.entries(slots).filter(([,v])=>v.length>0).map(([k,v])=>({label:k,avg:v.reduce((a,b)=>a+b,0)/v.length}));
+  const wdLabels=['Zo','Ma','Di','Wo','Do','Vr','Za'];
+  const wdStats=Object.entries(wdMap).filter(([,v])=>v.length>0).map(([d,v])=>({label:wdLabels[d],avg:v.reduce((a,b)=>a+b,0)/v.length,day:parseInt(d)})).sort((a,b)=>a.day-b.day);
+  const now=new Date();
+  const dailyAvgs=[];
+  for(let i=29;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);const de=entries.filter(e=>new Date(e.ts).toDateString()===d.toDateString());dailyAvgs.push(de.length?de.reduce((s,e)=>s+e.after,0)/de.length:null);}
+  const sorted=[...entries].sort((a,b)=>a.delta-b.delta);
+  const allAfter=entries.map(e=>e.after);
+  const overallAvg=allAfter.length?allAfter.reduce((a,b)=>a+b,0)/allAfter.length:5;
+  const recentAvg=entries.slice(0,20).map(e=>e.after).reduce((a,b)=>a+b,0)/Math.max(1,Math.min(20,entries.length));
+  return{typeStats,personStats,slotStats,wdStats,dailyAvgs,topDrops:sorted.filter(e=>e.delta<0).slice(0,5),topLifts:sorted.filter(e=>e.delta>0).reverse().slice(0,5),overallAvg,recentAvg,trend:recentAvg>overallAvg+0.2?'verbeterend':recentAvg<overallAvg-0.3?'dalend':'stabiel'};
+}
+
+// ── INSIGHTS RENDER ───────────────────────────────────────
+function renderInsights(){
+  if(entries.length<3){document.querySelectorAll('.card .card-label').forEach(()=>{});return;}
+  const a=analyse();
+  const svg=document.getElementById('trendSvg');
+  const nonNull=a.dailyAvgs.map((v,i)=>({v,i})).filter(x=>x.v!==null);
+  if(nonNull.length>1){
+    const W=390,H=48,pad=5;
+    const pts=nonNull.map(({v,i})=>`${pad+(i/29)*(W-pad*2)},${H-pad-(v/10)*(H-pad*2)}`);
+    svg.innerHTML=`<defs><linearGradient id="tg" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#C4654A"/><stop offset="50%" stop-color="#D4952A"/><stop offset="100%" stop-color="#7A9E7E"/></linearGradient></defs>
+    <polyline points="${pts.join(' ')}" fill="none" stroke="url(#tg)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+  }
+  const d30=new Date();d30.setDate(d30.getDate()-29);
+  document.getElementById('trendStart').textContent=d30.toLocaleDateString('nl-NL',{day:'numeric',month:'short'});
+
+  const barHTML=(items,maxVal,colorFn)=>items.map(t=>`<div class="bar-row"><div class="bar-label">${t.label||t.type}</div><div class="bar-track"><div class="bar-fill" style="width:${(t.avg/maxVal*100).toFixed(0)}%;background:${colorFn(t.avg)}"></div></div><div class="bar-val">${t.avg.toFixed(1)}</div></div>`).join('');
+  const col=v=>v>=6?'var(--sage)':v>=4?'var(--amber)':'var(--terra)';
+
+  const maxT=Math.max(...a.typeStats.map(t=>t.avg));
+  document.getElementById('insightByType').innerHTML=barHTML(a.typeStats,maxT,col);
+  document.getElementById('insightPeople').innerHTML=a.personStats.length?a.personStats.map(p=>`<div class="trigger-item"><div><div class="trigger-name">${p.person}</div><div class="trigger-sub">${p.count}x · gem. stemming ${p.avgAfter.toFixed(1)}/10</div></div><div class="trigger-badge ${p.avgDelta<0?'badge-neg':'badge-pos'}">${p.avgDelta>0?'+':''}${p.avgDelta.toFixed(1)}</div></div>`).join(''):'<div style="color:var(--taupe);font-size:14px;">Minimaal 2 interacties per persoon nodig.</div>';
+  const maxS=Math.max(...a.slotStats.map(s=>s.avg));
+  document.getElementById('insightTimeOfDay').innerHTML=barHTML(a.slotStats,maxS,col);
+  const maxW=Math.max(...a.wdStats.map(s=>s.avg));
+  document.getElementById('insightWeekday').innerHTML=barHTML(a.wdStats,maxW,col);
+  document.getElementById('insightDrops').innerHTML=a.topDrops.map(e=>`<div class="trigger-item"><div><div class="trigger-name">${e.type}${e.who?' · '+e.who:''}</div>${e.note?`<div class="trigger-sub">"${e.note.slice(0,48)}…"</div>`:''}</div><div class="trigger-badge badge-neg">${e.delta}</div></div>`).join('');
+  document.getElementById('insightLifts').innerHTML=a.topLifts.map(e=>`<div class="trigger-item"><div><div class="trigger-name">${e.type}${e.who?' · '+e.who:''}</div>${e.note?`<div class="trigger-sub">"${e.note.slice(0,48)}…"</div>`:''}</div><div class="trigger-badge badge-pos">+${e.delta}</div></div>`).join('');
+}
+
+// ── AI COACH ──────────────────────────────────────────────
+async function loadAI(){
+  if(entries.length<3){document.getElementById('aiSuggestions').innerHTML='<div style="color:var(--taupe);font-size:14px;padding:20px 0;">Log minimaal 3 interacties voor een analyse.</div>';return;}
+  document.getElementById('aiSuggestions').innerHTML=`<div class="ai-loading"><div class="ai-dots"><span>●</span><span>●</span><span>●</span></div>Jouw patronen worden geanalyseerd…</div>`;
+  document.getElementById('refreshBtn').disabled=true;
+  const a=analyse();
+  const sum=`DATA — ${entries.length} entries, ${a.trend} trend
+Gem: ${a.overallAvg.toFixed(1)}/10 | Recent: ${a.recentAvg.toFixed(1)}/10
+TYPES: ${a.typeStats.map(t=>`${t.type}:${t.avg.toFixed(1)}(Δ${t.avgDelta>0?'+':''}${t.avgDelta.toFixed(1)})`).join(', ')}
+DAGDEEL: ${a.slotStats.map(s=>`${s.label}:${s.avg.toFixed(1)}`).join(', ')}
+DAG: ${a.wdStats.map(s=>`${s.label}:${s.avg.toFixed(1)}`).join(', ')}
+PERSONEN: ${a.personStats.map(p=>`${p.person}:Δ${p.avgDelta>0?'+':''}${p.avgDelta.toFixed(1)}(n=${p.count})`).join(', ')}
+TOP DALINGEN: ${a.topDrops.slice(0,3).map(e=>`${e.type}${e.who?' met '+e.who:''}(${e.delta})`).join(', ')}
+TOP STIJGINGEN: ${a.topLifts.slice(0,3).map(e=>`${e.type}${e.who?' met '+e.who:''}(+${e.delta})`).join(', ')}`;
+
+  const prompt=`Je bent een warme, praktische CGT-coach gespecialiseerd in ADHD en emotieregulatie (inclusief rejection sensitive dysphoria). Je analyseert stemmings- en interactiedata van een gebruiker. De stemming wordt gemeten op een 1-10 schaal voor en na interacties.
+
+DATA:
+${sum}
+
+Geef een persoonlijke analyse IN HET NEDERLANDS. Wees specifiek — verwijs naar echte patronen in de data.
+
+Antwoord ALLEEN als geldig JSON (geen markdown, geen uitleg buiten JSON):
+{
+  "samenvatting": "2-3 zinnen eerlijke samenvatting van het belangrijkste patroon",
+  "suggesties": [
+    {"titel": "Korte titel", "tekst": "Specifiek, praktisch advies gebaseerd op CGT en deze data. 2-4 zinnen."},
+    {"titel": "...", "tekst": "..."},
+    {"titel": "...", "tekst": "..."}
+  ],
+  "aandachtspunt": "Één patroon dat aandacht verdient. Wees specifiek.",
+  "kracht": "Één positief patroon of kracht zichtbaar in de data."
+}`;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+    const data=await res.json();
+    const raw=data.content[0].text.replace(/```json|```/g,'').trim();
+    renderAI(JSON.parse(raw));
+  }catch(err){
+    const a2=analyse();
+    const best=a2.typeStats[0],worst=a2.typeStats[a2.typeStats.length-1];
+    const wTime=a2.slotStats.reduce((w,s)=>s.avg<w.avg?s:w,a2.slotStats[0]||{label:'Ochtend',avg:5});
+    const bTime=a2.slotStats.reduce((b,s)=>s.avg>b.avg?s:b,a2.slotStats[0]||{label:'Avond',avg:5});
+    renderAI({
+      samenvatting:`Over ${entries.length} interacties is jouw gemiddelde stemming ${a2.overallAvg.toFixed(1)}/10 met een ${a2.trend} trend. ${best?best.type:'Bewegen'} is jouw sterkste stemmingsbooster, terwijl ${worst?worst.type:'Conflict'} de stemming het meest drukt.`,
+      suggesties:[
+        {titel:`Bescherm je ${wTime.label.toLowerCase()}uren`,tekst:`Jouw stemming is in de ${wTime.label.toLowerCase()} gemiddeld ${wTime.avg.toFixed(1)}/10 — je laagste dagdeel. Vermijd veeleisende gesprekken of vergaderingen in dit tijdvenster. Plan creatieve of routinematige taken voor dan, en bewaar je energie voor de ${bTime.label.toLowerCase()} (gem. ${bTime.avg.toFixed(1)}/10).`},
+        {titel:`Gebruik ${best?best.type.toLowerCase():'bewegen'} als anker`,tekst:`${best?best.type:'Bewegen'} verhoogt jouw stemming consistent. Bouw dit bewust in rondom zware interacties — als buffer voor stemmingsdalingen. Beschermend plannen, niet invullen wat overblijft.`},
+        {titel:'Benoem je stemming vóór een gesprek',tekst:'Bij ADHD en RSD kan een kort moment van zelfbewustzijn vóór een moeilijk gesprek de piek-reactie verzachten. Vraag jezelf: wat voel ik nu (1-10)? Dit activeert de prefrontale cortex en dempt de automatische respons.'}
+      ],
+      aandachtspunt:`Je ${wTime.label.toLowerCase()} kwetsbaarheid is consistent zichtbaar. Als je regelmatig belangrijke gesprekken of vergaderingen in dit venster plant, kan dat je stemmingscyclus versterken.`,
+      kracht:`${best?best.type:'Bepaalde activiteiten'} verhogen jouw stemming betrouwbaar. Je hebt een duidelijk werkend stemmingsanker — de data bewijst het.`
+    });
+  }
+  document.getElementById('refreshBtn').disabled=false;
+}
+
+function renderAI(data){
+  document.getElementById('aiSuggestions').innerHTML=`
+    <div class="sug-card" style="border-color:#C4D4E0;background:var(--sky-bg);">
+      <div class="sug-label" style="color:var(--sky);"><div class="pulse-dot" style="background:var(--sky)"></div>Jouw patroon</div>
+      <div class="sug-body">${data.samenvatting}</div>
+    </div>
+    ${data.suggesties.map((s,i)=>`<div class="sug-card"><div class="sug-label"><div class="pulse-dot"></div>Tip ${i+1}</div><div class="sug-title">${s.titel}</div><div class="sug-body">${s.tekst}</div></div>`).join('')}
+    <div class="sug-card" style="border-color:var(--terra-lt);background:var(--terra-bg);">
+      <div class="sug-label" style="color:var(--terra);">⚠ Aandachtspunt</div>
+      <div class="sug-body">${data.aandachtspunt}</div>
+    </div>
+    <div class="sug-card" style="border-color:#C4D8C6;background:var(--sage-bg);">
+      <div class="sug-label" style="color:var(--sage);">✓ Kracht</div>
+      <div class="sug-body">${data.kracht}</div>
+    </div>`;
+}
+
+// ── VOICE REFLECTION ──────────────────────────────────────
+function toggleVoice(){
+  if(voiceListening){stopVoice();return;}
+  if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){
+    showToast('Spraakherkenning niet beschikbaar in deze browser');return;
+  }
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  recognition=new SR(); recognition.lang='nl-NL'; recognition.continuous=true; recognition.interimResults=true;
+  voiceText='';
+  recognition.onresult=e=>{
+    let interim='',final='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal)final+=e.results[i][0].transcript;
+      else interim+=e.results[i][0].transcript;
+    }
+    voiceText+=final;
+    const el=document.getElementById('voiceTranscript');
+    el.style.display='block'; el.textContent=(voiceText+interim)||'Luisteren…';
+  };
+  recognition.onerror=()=>stopVoice();
+  recognition.start(); voiceListening=true;
+  document.getElementById('voiceBtn').className='voice-btn listening';
+  document.getElementById('voiceBtnText').textContent='Stoppen';
+  document.getElementById('voiceBtnIcon').textContent='⏹️';
+  document.getElementById('voiceStatus').textContent='Aan het luisteren…';
+  document.getElementById('voiceSub').textContent='Vertel vrijuit. Tik op stoppen als je klaar bent.';
+}
+
+function stopVoice(){
+  if(recognition)recognition.stop(); voiceListening=false;
+  document.getElementById('voiceBtn').className='voice-btn idle';
+  document.getElementById('voiceBtnText').textContent='Begin te praten';
+  document.getElementById('voiceBtnIcon').textContent='🎙️';
+  document.getElementById('voiceStatus').textContent='Opgenomen';
+  if(voiceText.trim()) document.getElementById('procesVoiceBtn').style.display='block';
+}
+
+async function processVoice(){
+  if(!voiceText.trim()){showToast('Niets opgenomen');return;}
+  document.getElementById('voiceBtn').className='voice-btn processing';
+  document.getElementById('voiceBtnText').textContent='Verwerken…';
+  document.getElementById('procesVoiceBtn').style.display='none';
+  document.getElementById('voiceStatus').textContent='Claude verwerkt jouw reflectie…';
+
+  const prompt=`Analyseer deze dagelijkse reflectie van iemand met ADHD die zijn/haar stemming bijhoudt. Geef een samenvatting en identificeer stemmingen.
+
+Reflectie: "${voiceText}"
+
+Antwoord ALLEEN als geldig JSON:
+{
+  "samenvatting": "2-3 zinnen samenvatting van de reflectie",
+  "kernpunten": ["punt 1", "punt 2", "punt 3"],
+  "stemmingen": ["stemming 1", "stemming 2"],
+  "dagcijfer": 6
+}`;
+
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:400,messages:[{role:'user',content:prompt}]})});
+    const data=await res.json();
+    const raw=data.content[0].text.replace(/```json|```/g,'').trim();
+    const parsed=JSON.parse(raw);
+    const refl={id:Date.now(),ts:new Date().toISOString(),transcript:voiceText,summary:parsed.samenvatting,keyPoints:parsed.kernpunten||[],moods:parsed.stemmingen||[],dayScore:parsed.dagcijfer||5};
+    reflections.unshift(refl);
+    localStorage.setItem(REFLDB,JSON.stringify(reflections));
+    addXP(20,'Dagafsluiting voltooid');
+    voiceText=''; document.getElementById('voiceTranscript').textContent=''; document.getElementById('voiceTranscript').style.display='none';
+    document.getElementById('voiceBtn').className='voice-btn idle';
+    document.getElementById('voiceBtnText').textContent='Begin te praten';
+    document.getElementById('voiceBtnIcon').textContent='🎙️';
+    document.getElementById('voiceStatus').textContent='Klaar om te luisteren';
+    document.getElementById('voiceSub').textContent='Vertel hoe je dag was. Wat ging goed? Wat was zwaar?';
+    renderReflections(); showToast('Reflectie opgeslagen +20 XP'); confetti();
+  }catch(e){
+    const refl={id:Date.now(),ts:new Date().toISOString(),transcript:voiceText,summary:voiceText.slice(0,200),keyPoints:[],moods:[],dayScore:5};
+    reflections.unshift(refl);
+    localStorage.setItem(REFLDB,JSON.stringify(reflections));
+    voiceText=''; document.getElementById('voiceTranscript').style.display='none';
+    document.getElementById('voiceBtn').className='voice-btn idle';
+    document.getElementById('voiceBtnText').textContent='Begin te praten';
+    document.getElementById('voiceBtnIcon').textContent='🎙️';
+    renderReflections(); showToast('Opgeslagen (zonder AI samenvatting)');
+  }
+}
+
+function renderReflections(){
+  const el=document.getElementById('reflectHistory');
+  if(!reflections.length){el.innerHTML='';return;}
+  el.innerHTML='<div class="sec-head" style="margin-top:8px;">Eerdere reflecties</div>'+
+  `<div class="card" style="padding:4px 16px;">`+
+  reflections.slice(0,7).map(r=>{
+    const d=new Date(r.ts);
+    const dagen=['Zo','Ma','Di','Wo','Do','Vr','Za'];
+    const mnd=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+    return `<div class="reflect-entry">
+      <div class="reflect-date">${dagen[d.getDay()]} ${d.getDate()} ${mnd[d.getMonth()]} · dagcijfer ${r.dayScore}/10</div>
+      <div class="reflect-text">${r.summary}</div>
+      ${r.moods&&r.moods.length?`<div class="reflect-moods">${r.moods.map(m=>`<span class="reflect-mood-chip">${m}</span>`).join('')}</div>`:''}
+    </div>`;
+  }).join('')+'</div>';
+}
+
+// ── NOTIFICATIONS ─────────────────────────────────────────
+function loadNotifSettings(){
+  try{
+    const s=JSON.parse(localStorage.getItem(NOTDB)||'{}');
+    ['1','2','3','4'].forEach(n=>{
+      if(s['notif'+n]) document.getElementById('notif'+n).checked=true;
+      if(s['notif'+n+'Time']) document.getElementById('notif'+n+'Time').value=s['notif'+n+'Time'];
+    });
+  }catch(e){}
+  updateNotifStatus();
+}
+function saveNotifSettings(){
+  const s={};
+  ['1','2','3','4'].forEach(n=>{s['notif'+n]=document.getElementById('notif'+n).checked;s['notif'+n+'Time']=document.getElementById('notif'+n+'Time').value;});
+  localStorage.setItem(NOTDB,JSON.stringify(s));
+  scheduleNotifications();
+}
+function updateNotifStatus(){
+  const el=document.getElementById('notifPermStatus');
+  if(!('Notification' in window)){el.textContent='Meldingen worden niet ondersteund in deze browser.';return;}
+  if(Notification.permission==='granted') el.textContent='✓ Meldingen zijn ingeschakeld';
+  else if(Notification.permission==='denied') el.textContent='Meldingen zijn geblokkeerd. Sta ze toe via je browserinstellingen.';
+  else el.textContent='Klik op de knop hieronder om meldingen in te schakelen.';
+}
+async function requestNotifPermission(){
+  if(!('Notification' in window)){showToast('Niet ondersteund in deze browser');return;}
+  const perm=await Notification.requestPermission();
+  updateNotifStatus();
+  if(perm==='granted'){showToast('Meldingen ingeschakeld!');scheduleNotifications();}
+  else showToast('Meldingen geweigerd');
+}
+function scheduleNotifications(){
+  if(Notification.permission!=='granted') return;
+  const messages=[
+    'Goedemorgen! Hoe begin jij de dag? Log je eerste interactie in Helder. 🌅',
+    'Lunchpauze! Even inchecken — hoe gaat het tot nu toe? 🥪',
+    'Middagcheck: hoe voel je je nu? Neem even een minuut voor jezelf. ☕',
+    'Avond! Tijd voor je dagafsluiting in Helder. Hoe was het? 🌙'
+  ];
+  ['1','2','3','4'].forEach((n,i)=>{
+    const enabled=document.getElementById('notif'+n).checked;
+    const timeVal=document.getElementById('notif'+n+'Time').value;
+    if(!enabled||!timeVal) return;
+    const [h,m]=timeVal.split(':').map(Number);
+    const now=new Date();
+    const target=new Date(); target.setHours(h,m,0,0);
+    if(target<=now) target.setDate(target.getDate()+1);
+    const delay=target-now;
+    setTimeout(()=>{
+      if(Notification.permission==='granted') new Notification('Helder 🌿',{body:messages[i],icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🌿</text></svg>'});
+    },delay);
+  });
+}
+
+// ── DATA EXPORT / CLEAR ───────────────────────────────────
+function exportData(){
+  const blob=new Blob([JSON.stringify({entries,reflections,xpData,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='helder_export.json'; a.click();
+}
+function clearData(){
+  if(!confirm('Weet je zeker dat je alle data wil wissen? Dit kan niet ongedaan worden.')) return;
+  [DB,CBTDB,REFLDB,XPDB,NOTDB].forEach(k=>localStorage.removeItem(k));
+  entries=[];cbtRecords=[];reflections=[];xpData={xp:0,level:1,streak:0,lastDate:''};
+  renderToday();renderLog();showToast('Data gewist');
+}
+
+// ── CBT ───────────────────────────────────────────────────
+function renderCBTHistory(){}
+
+// ── GOOGLE HEALTH API INTEGRATIE ─────────────────────────
+// Vervangt Fitbit Web API (sunset september 2026)
+// Gebruikt Google OAuth 2.0 met PKCE voor browser-gebaseerde apps
+
+const GH_AUTH_URL   = 'https://accounts.google.com/o/oauth2/v2/auth';
+const GH_TOKEN_URL  = 'https://oauth2.googleapis.com/token';
+const GH_API_BASE   = 'https://health.googleapis.com/v4/users/me/dataTypes';
+
+// Scopes: alleen lezen van hartslag, slaap en activiteit
+const GH_SCOPES = [
+  'https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly',
+  'https://www.googleapis.com/auth/googlehealth.sleep.readonly',
+  'https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly',
+].join(' ');
+
+function getGHRedirectUri() {
+  if (window.location.hostname === 'jeroentjj.github.io') {
+    return 'https://jeroentjj.github.io/helder/fitbit-callback.html';
+  }
+  return window.location.origin + window.location.pathname.replace('index.html','') + 'fitbit-callback.html';
+}
+
+// PKCE helpers
+async function generatePKCE() {
+  const array = new Uint8Array(64);
+  crypto.getRandomValues(array);
+  const verifier = btoa(String.fromCharCode(...array))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+  const data = new TextEncoder().encode(verifier);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  const challenge = btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+  return { verifier, challenge };
+}
+
+async function startGoogleHealthAuth() {
+  const clientId = document.getElementById('fitbitClientId').value.trim();
+  if (!clientId) { showToast('Vul je Google Cloud Client ID in'); return; }
+  localStorage.setItem('helder_gh_client_id', clientId);
+
+  const { verifier, challenge } = await generatePKCE();
+  const stateArr = new Uint8Array(16);
+  crypto.getRandomValues(stateArr);
+  const state = btoa(String.fromCharCode(...stateArr)).replace(/=/g,'');
+
+  sessionStorage.setItem('gh_code_verifier', verifier);
+  sessionStorage.setItem('gh_oauth_state', state);
+
+  const params = new URLSearchParams({
+    client_id:             clientId,
+    redirect_uri:          getGHRedirectUri(),
+    response_type:         'code',
+    scope:                 GH_SCOPES,
+    state:                 state,
+    code_challenge:        challenge,
+    code_challenge_method: 'S256',
+    access_type:           'offline',  // geeft refresh token
+    prompt:                'consent',  // altijd opnieuw toestemming vragen
+  });
+
+  window.location.href = GH_AUTH_URL + '?' + params.toString();
+}
+
+// startFitbitAuth is nu een alias voor achterwaartse compatibiliteit
+function startFitbitAuth() { startGoogleHealthAuth(); }
+
+async function getGHToken() {
+  const raw = localStorage.getItem('helder_gh_tokens');
+  if (!raw) return null;
+  let tokens = JSON.parse(raw);
+
+  // Token nog geldig? (60 sec buffer)
+  if (Date.now() < tokens.expires_at - 60000) return tokens.access_token;
+
+  // Refresh via Google
+  const clientId = localStorage.getItem('helder_gh_client_id');
+  try {
+    const res = await fetch(GH_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id:     clientId,
+        grant_type:    'refresh_token',
+        refresh_token: tokens.refresh_token,
+      })
+    });
+    if (!res.ok) throw new Error('refresh mislukt');
+    const data = await res.json();
+    tokens = {
+      ...tokens,
+      access_token: data.access_token,
+      expires_at:   Date.now() + (data.expires_in * 1000),
+      // refresh_token blijft hetzelfde tenzij Google een nieuwe stuurt
+      ...(data.refresh_token ? { refresh_token: data.refresh_token } : {}),
+    };
+    localStorage.setItem('helder_gh_tokens', JSON.stringify(tokens));
+    return tokens.access_token;
+  } catch(e) {
+    localStorage.removeItem('helder_gh_tokens');
+    return null;
+  }
+}
+
+async function fetchHealthToday() {
+  const token = await getGHToken();
+  if (!token) return null;
+
+  const today = new Date();
+  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+  const endOfDay   = new Date(today.getFullYear(), today.getMonth(), today.getDate()+1).toISOString();
+  const yesterday  = new Date(today.getFullYear(), today.getMonth(), today.getDate()-1).toISOString();
+  const todayDate  = today.toISOString().split('T')[0];
+
+  const headers = { Authorization: 'Bearer ' + token };
+
+  try {
+    const [hrRes, sleepRes] = await Promise.all([
+      // Dagelijkse rusthartslag via dailyRollUp
+      fetch(`${GH_API_BASE}/daily-resting-heart-rate/dataPoints:dailyRollUp?filter=daily_resting_heart_rate.date="${todayDate}"`, { headers }),
+      // Slaap van afgelopen nacht (eindtijd = vandaag)
+      fetch(`${GH_API_BASE}/sleep/dataPoints:reconcile?filter=sleep.interval.end_time>="${startOfDay}" AND sleep.interval.end_time<="${endOfDay}"`, { headers }),
+    ]);
+
+    const hrData    = hrRes.ok    ? await hrRes.json()    : null;
+    const sleepData = sleepRes.ok ? await sleepRes.json() : null;
+
+    // Rusthartslag uitlezen
+    const restingHR = hrData?.dataPoints?.[0]?.dailyRestingHeartRate?.beatsPerMinute ?? null;
+
+    // Slaap: optellen van alle slaapsessies
+    let sleepMinutes = null;
+    if (sleepData?.dataPoints?.length) {
+      sleepMinutes = sleepData.dataPoints.reduce((sum, dp) => {
+        const start = new Date(dp.sleep?.interval?.startTime || 0);
+        const end   = new Date(dp.sleep?.interval?.endTime   || 0);
+        return sum + Math.round((end - start) / 60000);
+      }, 0);
+    }
+
+    return { restingHR, sleepMinutes, source: 'Google Health' };
+
+  } catch(e) {
+    console.warn('Google Health API fout:', e);
+    return null;
+  }
+}
+
+function disconnectFitbit() {
+  if (!confirm('Google Health ontkoppelen?')) return;
+  ['helder_gh_tokens','helder_gh_client_id',
+   'helder_fitbit_tokens','helder_fitbit_client_id'].forEach(k => localStorage.removeItem(k));
+  initFitbitUI();
+  showToast('Google Health ontkoppeld');
+}
+
+function initFitbitUI() {
+  // Ondersteuning voor zowel nieuwe GH tokens als eventuele oude Fitbit tokens
+  const hasTokens = !!(localStorage.getItem('helder_gh_tokens') || localStorage.getItem('helder_fitbit_tokens'));
+  document.getElementById('fitbitSetup').style.display    = hasTokens ? 'none'         : 'block';
+  document.getElementById('fitbitConnected').style.display = hasTokens ? 'block'        : 'none';
+  document.getElementById('fitbitDisconnectBtn').style.display = hasTokens ? 'inline-block' : 'none';
+  const cid = localStorage.getItem('helder_gh_client_id') || localStorage.getItem('helder_fitbit_client_id');
+  if (cid) document.getElementById('fitbitClientId').value = cid;
+  if (hasTokens) loadHealthPreview();
+}
+
+async function loadHealthPreview() {
+  const data = await fetchHealthToday();
+  const el = document.getElementById('fitbitDataPreview');
+  if (!data) { el.innerHTML = '<span style="color:var(--taupe);font-size:12px;">Data ophalen…</span>'; return; }
+  const parts = [];
+  if (data.restingHR)    parts.push(`💓 Rusthartslag <strong>${data.restingHR} bpm</strong>`);
+  if (data.sleepMinutes) parts.push(`😴 Slaap <strong>${Math.floor(data.sleepMinutes/60)}u ${data.sleepMinutes%60}m</strong>`);
+  el.innerHTML = parts.join(' &nbsp;·&nbsp; ') || 'Nog geen data voor vandaag';
+}
+
+async function getHealthContext() {
+  const data = await fetchHealthToday();
+  if (!data) return '';
+  const parts = [];
+  if (data.restingHR)    parts.push(`HR: ${data.restingHR}bpm`);
+  if (data.sleepMinutes) parts.push(`Slaap: ${Math.floor(data.sleepMinutes/60)}u${data.sleepMinutes%60}m`);
+  return parts.join(', ');
+}
+
+// Alias voor backward compat
+const getFitbitContext = getHealthContext;
+
+// Init bij laden
+initFitbitUI();
+// ── TOAST ─────────────────────────────────────────────────
+function showToast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// ── PWA: Service Worker + Install prompt ──────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW registratie mislukt:', err));
+  });
+}
+
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  showInstallBanner();
+});
+
+function showInstallBanner() {
+  if (document.getElementById('installBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'installBanner';
+  banner.style.cssText = 'position:fixed;bottom:96px;left:50%;transform:translateX(-50%);background:var(--charcoal);color:#fff;padding:12px 16px;border-radius:14px;display:flex;align-items:center;gap:12px;z-index:250;max-width:380px;width:calc(100% - 40px);box-shadow:0 6px 24px rgba(61,53,48,.3);animation:slideUp .3s ease;';
+  banner.innerHTML = `
+    <div style="font-size:24px;">🌿</div>
+    <div style="flex:1;font-size:13px;line-height:1.4;">Installeer Helder op je beginscherm voor snelle toegang</div>
+    <button onclick="installPWA()" style="background:var(--terra);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;flex-shrink:0;">Installeer</button>
+    <button onclick="document.getElementById('installBanner').remove()" style="background:transparent;color:#9C8E85;border:none;font-size:20px;cursor:pointer;padding:0 4px;flex-shrink:0;">×</button>
+  `;
+  document.body.appendChild(banner);
+}
+
+async function installPWA() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  const b = document.getElementById('installBanner');
+  if (b) b.remove();
+  if (outcome === 'accepted') showToast('Helder wordt geïnstalleerd 🌿');
+}
+
+function installFromSettings() {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+  const hint = document.getElementById('installHint');
+
+  if (isStandalone) {
+    hint.textContent = '✓ Helder is al geïnstalleerd op je beginscherm!';
+    return;
+  }
+  if (deferredPrompt) {
+    installPWA();
+  } else if (isIOS) {
+    hint.innerHTML = 'Op iPhone/iPad: tik op de <strong>Deel-knop</strong> onderin Safari en kies <strong>"Zet op beginscherm"</strong>.';
+  } else {
+    hint.innerHTML = 'Open het browsermenu (⋮) en kies <strong>"App installeren"</strong> of <strong>"Toevoegen aan beginscherm"</strong>.';
+  }
+}
+
+// iOS install hint (iOS doesn't support beforeinstallprompt)
+window.addEventListener('load', () => {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+  if (isIOS && !isStandalone && !sessionStorage.getItem('ios_hint_shown')) {
+    sessionStorage.setItem('ios_hint_shown', '1');
+    setTimeout(() => {
+      const banner = document.createElement('div');
+      banner.id = 'iosBanner';
+      banner.style.cssText = 'position:fixed;bottom:96px;left:50%;transform:translateX(-50%);background:var(--charcoal);color:#fff;padding:14px 16px;border-radius:14px;z-index:250;max-width:380px;width:calc(100% - 40px);box-shadow:0 6px 24px rgba(61,53,48,.3);font-size:13px;line-height:1.5;';
+      banner.innerHTML = `<div style="display:flex;align-items:flex-start;gap:10px;"><div style="font-size:22px;">🌿</div><div style="flex:1;">Installeer Helder: tik op <strong>Deel</strong> <span style="font-size:16px;">􀈂</span> onderin en kies <strong>"Zet op beginscherm"</strong></div><button onclick="document.getElementById('iosBanner').remove()" style="background:transparent;color:#9C8E85;border:none;font-size:20px;cursor:pointer;">×</button></div>`;
+      document.body.appendChild(banner);
+    }, 2500);
+  }
+});
+</script>
+</body>
+</html>

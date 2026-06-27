@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Helder — Google Health verbinden</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@1,400&family=Plus+Jakarta+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  body{background:#F5F0E8;font-family:'Plus Jakarta Sans',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;}
+  .card{background:#FAF7F2;border:1px solid #E2D8D0;border-radius:16px;padding:40px 32px;max-width:380px;width:90%;text-align:center;box-shadow:0 4px 24px rgba(61,53,48,.08);}
+  .logo{font-family:'Fraunces',serif;font-style:italic;font-size:28px;color:#C4654A;margin-bottom:24px;}
+  .icon{font-size:52px;margin-bottom:16px;}
+  h2{font-size:20px;color:#3D3530;margin-bottom:10px;font-weight:600;}
+  p{font-size:14px;color:#9C8E85;line-height:1.65;margin-bottom:20px;}
+  .btn{display:inline-block;padding:13px 28px;background:#C4654A;color:#fff;border-radius:10px;font-size:15px;font-weight:600;text-decoration:none;cursor:pointer;border:none;font-family:'Plus Jakarta Sans',sans-serif;margin-top:4px;}
+  .error-box{background:#F7EAE7;border:1px solid #E8A598;border-radius:10px;padding:14px 16px;color:#C4654A;font-size:13px;margin-bottom:16px;text-align:left;line-height:1.55;}
+  .success-box{background:#EBF2EC;border:1px solid #C4D8C6;border-radius:10px;padding:14px 16px;color:#7A9E7E;font-size:13px;margin-bottom:16px;text-align:left;line-height:1.55;}
+  .spinner{display:inline-block;width:32px;height:32px;border:3px solid #E2D8D0;border-top-color:#C4654A;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:16px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo"><em>helder</em></div>
+  <div id="icon"><div class="spinner"></div></div>
+  <h2 id="title">Google Health verbinden…</h2>
+  <p id="message">Even geduld, de verbinding wordt verwerkt.</p>
+  <div id="errorBox" style="display:none;" class="error-box"></div>
+  <div id="successBox" style="display:none;" class="success-box"></div>
+  <button class="btn" id="backBtn" style="display:none;" onclick="window.location.href='index.html'">Terug naar Helder</button>
+</div>
+
+<script>
+const GH_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+
+async function handleCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const code  = params.get('code');
+  const state = params.get('state');
+  const error = params.get('error');
+
+  if (error) {
+    const desc = params.get('error_description') || error;
+    showError(
+      error === 'access_denied'
+        ? 'Je hebt de toegang geweigerd. Je kunt dit altijd opnieuw proberen in Helder via Instellingen.'
+        : 'Google Health verbinding mislukt: ' + desc
+    );
+    return;
+  }
+
+  if (!code) {
+    showError('Geen autorisatiecode ontvangen van Google. Probeer opnieuw.');
+    return;
+  }
+
+  // CSRF check
+  const savedState = sessionStorage.getItem('gh_oauth_state');
+  if (state !== savedState) {
+    showError('Beveiligingscontrole mislukt (state mismatch). Probeer opnieuw via Instellingen.');
+    return;
+  }
+
+  const codeVerifier = sessionStorage.getItem('gh_code_verifier');
+  const clientId     = localStorage.getItem('helder_gh_client_id');
+
+  if (!codeVerifier || !clientId) {
+    showError('Sessie verlopen. Ga terug naar Instellingen en probeer opnieuw.');
+    return;
+  }
+
+  const redirectUri = window.location.hostname === 'jeroentjj.github.io'
+    ? 'https://jeroentjj.github.io/helder/fitbit-callback.html'
+    : window.location.origin + window.location.pathname;
+
+  try {
+    const tokenRes = await fetch(GH_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code:          code,
+        client_id:     clientId,
+        redirect_uri:  redirectUri,
+        grant_type:    'authorization_code',
+        code_verifier: codeVerifier,
+      })
+    });
+
+    const tokenData = await tokenRes.json();
+
+    if (!tokenRes.ok) {
+      // Veelvoorkomend: client_secret ontbreekt voor web apps zonder server
+      if (tokenData.error === 'invalid_client') {
+        showError(
+          'Client authenticatie mislukt. Zorg dat je in Google Cloud Console het type ' +
+          '"Web application" hebt geselecteerd en dat je geen client secret nodig hebt ' +
+          'voor de PKCE flow. Controleer ook of de redirect URI exact overeenkomt: ' + redirectUri
+        );
+      } else {
+        showError('Token uitwisseling mislukt: ' + (tokenData.error_description || tokenData.error || 'Onbekende fout'));
+      }
+      return;
+    }
+
+    if (!tokenData.access_token) {
+      showError('Geen access token ontvangen. Probeer opnieuw.');
+      return;
+    }
+
+    // Tokens opslaan
+    localStorage.setItem('helder_gh_tokens', JSON.stringify({
+      access_token:  tokenData.access_token,
+      refresh_token: tokenData.refresh_token || '',
+      expires_at:    Date.now() + ((tokenData.expires_in || 3600) * 1000),
+      scope:         tokenData.scope || '',
+    }));
+
+    // Sessie opschonen
+    sessionStorage.removeItem('gh_oauth_state');
+    sessionStorage.removeItem('gh_code_verifier');
+
+    // Succes
+    document.getElementById('icon').textContent = '✅';
+    document.getElementById('title').textContent = 'Google Health gekoppeld!';
+    document.getElementById('message').textContent = '';
+    document.getElementById('successBox').style.display = 'block';
+    document.getElementById('successBox').innerHTML =
+      '✓ Je Google Health account is succesvol gekoppeld aan Helder.<br><br>' +
+      'Hartslag, slaap en HRV worden voortaan meegenomen als context bij je stemming-logs.';
+    document.getElementById('backBtn').style.display = 'inline-block';
+
+    // Automatisch terug na 2 sec
+    setTimeout(() => window.location.href = 'index.html', 2000);
+
+  } catch(err) {
+    showError('Netwerkfout: ' + err.message + '. Controleer je internetverbinding en probeer opnieuw.');
+  }
+}
+
+function showError(msg) {
+  document.getElementById('icon').textContent = '❌';
+  document.getElementById('title').textContent = 'Verbinding mislukt';
+  document.getElementById('message').textContent = '';
+  document.getElementById('errorBox').style.display = 'block';
+  document.getElementById('errorBox').textContent = msg;
+  document.getElementById('backBtn').style.display = 'inline-block';
+}
+
+handleCallback();
+</script>
+</body>
+</html>
